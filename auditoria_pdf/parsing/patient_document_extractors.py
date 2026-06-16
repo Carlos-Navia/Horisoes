@@ -50,6 +50,10 @@ class PatternScoredPatientDocumentExtractor(PatientDocumentExtractorContract):
             134,
         ),
         (
+            r"(?:NUMERO|N[UUM]MERO)\s+(?:DE\s+)?ID\s*[:=\-]?\s*(\d[\d\.\-\s]{5,24})",
+            134,
+        ),
+        (
             r"DOCUMENTO\s+IDENTIDAD\s*[:=\-]?\s*(?:\r?\n\s*)?(\d[\d\.\-\s]{5,24})",
             130,
         ),
@@ -319,6 +323,8 @@ class PdePatientDocumentExtractor(BasePatternPatientDocumentExtractor):
     _MAX_LINES = 150
     _PRIMARY_PATTERNS = (
         r"(?:NUMERO|N[UUM]MERO)\s+DE\s+IDENTIFIC(?:ACION)?\s*[:=\-]?\s*(\d[\d\.\-\s]{5,24})",
+        # ADRES BDUA format
+        r"N[uú]mero\s+de\s+identificaci[oó]?n\s+(\d{6,15})",
         r"AFILIADO\s*[:=\-]?\s*(?:CC|TI|CE|RC|PA)?[\s\-\.:]*(\d[\d\.\-\s]{5,24})",
         r"PACIENTE[^\n]{0,120}\b(?:CC|TI|CE|RC|PA)\W{0,4}(\d[\d\.\-\s]{5,24})",
         r"IDENTIFIC(?:ACION)?\s+DEL\s+PACIENTE\s*[:=\-]?\s*(\d[\d\.\-\s]{5,24})",
@@ -982,15 +988,20 @@ class PdxHybridPatientDocumentExtractor(PatientDocumentExtractorContract):
         self,
         strict_extractor: PatientDocumentExtractorContract | None = None,
         table_extractor: PatientDocumentExtractorContract | None = None,
+        fallback_extractor: PatientDocumentExtractorContract | None = None,
     ) -> None:
         self._strict_extractor = strict_extractor or PdxPatientDocumentExtractor()
         self._table_extractor = table_extractor or PdxHighlightedPatientDocumentExtractor()
+        self._fallback_extractor = fallback_extractor or AdditionalPatientDocumentExtractor()
 
     def extract(self, text: str) -> str | None:
         strict_candidate = self._strict_extractor.extract(text)
         if strict_candidate:
             return strict_candidate
-        return self._table_extractor.extract(text)
+        table_candidate = self._table_extractor.extract(text)
+        if table_candidate:
+            return table_candidate
+        return self._fallback_extractor.extract(text)
 
 
 class HaoPatientDocumentExtractor(BasePatternPatientDocumentExtractor):
@@ -1017,6 +1028,7 @@ class AdditionalPatientDocumentExtractor(BasePatternPatientDocumentExtractor):
         r"IDENTIFIC(?:ACION)?\s*[:=\-]?\s*(?:CC|TI|CE|RC|PA)?[\s\-\.:]*(\d[\d\.\-\s]{5,24})",
         r"(?:NUMERO|N[UUM]MERO)\s+DE\s+DOCUMENTO\s*[:=\-]?\s*(\d[\d\.\-\s]{5,24})",
         r"DOCUMENTO\s+IDENTIDAD\s*[:=\-]?\s*(\d[\d\.\-\s]{5,24})",
+        r"Documento\s*:\s*(\d{6,15})",
     )
 
 
@@ -1031,6 +1043,7 @@ class CrcAnchorPatientDocumentExtractor(PatientDocumentExtractorContract):
             "NUMERO DOCUMENTO",
             "NUMERO DE DOCUMENTO",
             "DOCUMENTO IDENTIDAD",
+            "NUMERO DE ID",
         )
         anchor_indexes = [
             idx

@@ -22,6 +22,7 @@ class ParsedDocument:
     raw_text: str
     prefix: str
     patient_document: str | None = None
+    patient_name: str | None = None
     patient_document_type: str | None = None
     cups_codes: set[str] = field(default_factory=set)
     regimen: str | None = None

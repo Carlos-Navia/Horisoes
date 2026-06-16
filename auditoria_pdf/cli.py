@@ -52,7 +52,7 @@ class CliArgumentFactory:
             default=None,
             help=(
                 "Perfil EPS a ejecutar. "
-                "Valores: 1/coosalud, 2/nueva_eps o 3/sanitas. "
+                "Valores: 1/coosalud, 2/nueva_eps, 3/sanitas, 4/salud_total. "
                 "Si no se indica, se solicita antes de ejecutar."
             ),
         )
@@ -202,11 +202,15 @@ class EpsMethodPrompter:
         "1": EpsProfileKey.COOSALUD.value,
         "2": EpsProfileKey.NUEVA_EPS.value,
         "3": EpsProfileKey.SANITAS.value,
+        "4": EpsProfileKey.SALUD_TOTAL.value,
         "coosalud": EpsProfileKey.COOSALUD.value,
         "nuevaeps": EpsProfileKey.NUEVA_EPS.value,
         "nueva_eps": EpsProfileKey.NUEVA_EPS.value,
         "nueva eps": EpsProfileKey.NUEVA_EPS.value,
         "sanitas": EpsProfileKey.SANITAS.value,
+        "salud_total": EpsProfileKey.SALUD_TOTAL.value,
+        "saludtotal": EpsProfileKey.SALUD_TOTAL.value,
+        "salud total": EpsProfileKey.SALUD_TOTAL.value,
     }
 
     def normalize(self, value: str) -> str:
@@ -220,7 +224,7 @@ class EpsMethodPrompter:
         if normalized in self._SUPPORTED:
             return normalized
         raise ValueError(
-            "Valor EPS invalido. Opciones: 1) COOSALUD, 2) NUEVA EPS, 3) SANITAS."
+            "Valor EPS invalido. Opciones: 1) COOSALUD, 2) NUEVA EPS, 3) SANITAS, 4) SALUD TOTAL."
         )
 
     def prompt(self) -> str:
@@ -229,7 +233,8 @@ class EpsMethodPrompter:
             print("1) COOSALUD")
             print("2) NUEVA EPS")
             print("3) SANITAS")
-            raw = input("Ingrese opcion [1/2/3]: ")
+            print("4) SALUD TOTAL")
+            raw = input("Ingrese opcion [1/2/3/4]: ")
             try:
                 return self.normalize(raw)
             except ValueError as exc:
@@ -265,6 +270,7 @@ class AuditReportPrinter:
             print(f"  - {parsed.source_path.name} [{parsed.prefix}]")
             print(f"     Tipo interno:        {parsed.doc_type.value}")
             print(f"     Documento paciente:  {parsed.patient_document or 'N/D'}")
+            print(f"     Nombre paciente:     {parsed.patient_name or 'N/D'}")
             print(f"     Tipo documento:      {parsed.patient_document_type or 'N/D'}")
             print(f"     Regimen:             {parsed.regimen or 'N/D'}")
             print(f"     Codigo/CUPS:         {cups}")
@@ -292,12 +298,15 @@ class AuditServiceFactory:
             return self.create_for_nueva_eps(args)
         if selected_eps == EpsProfileKey.SANITAS.value:
             return self.create_for_sanitas(args)
+        if selected_eps == EpsProfileKey.SALUD_TOTAL.value:
+            return self.create_for_salud_total(args)
         if selected_eps == EpsProfileKey.COOSALUD.value:
             return self.create_for_coosalud(args)
         raise ValueError(
             "EPS no soportada: "
             f"{selected_eps}. Valores permitidos: {EpsProfileKey.COOSALUD.value}, "
-            f"{EpsProfileKey.NUEVA_EPS.value}, {EpsProfileKey.SANITAS.value}."
+            f"{EpsProfileKey.NUEVA_EPS.value}, {EpsProfileKey.SANITAS.value}, "
+            f"{EpsProfileKey.SALUD_TOTAL.value}."
         )
 
     def create_for_coosalud(self, args: argparse.Namespace) -> PdfAuditService:
@@ -310,6 +319,10 @@ class AuditServiceFactory:
 
     def create_for_sanitas(self, args: argparse.Namespace) -> PdfAuditService:
         profile = self._profile_factory.create_for_sanitas()
+        return self._create_with_profile(args, profile)
+
+    def create_for_salud_total(self, args: argparse.Namespace) -> PdfAuditService:
+        profile = self._profile_factory.create_for_salud_total()
         return self._create_with_profile(args, profile)
 
     def _create_with_profile(
@@ -527,6 +540,13 @@ class AuditCliApplication:
             args.eps = self._eps_method_prompter.normalize(selected_eps)
         except ValueError as exc:
             parser.error(str(exc))
+
+        # Configurar exporter segun EPS: Salud Total no usa columnas de nombre
+        include_names = args.eps != EpsProfileKey.SALUD_TOTAL.value
+        eps_exporter = AuditExcelExporter(include_name_columns=include_names)
+        self._single_executor._excel_exporter = eps_exporter
+        self._batch_executor._excel_exporter = eps_exporter
+
         pdf_paths = self._path_collector.collect(args)
 
         if args.min_pdfs < 2:

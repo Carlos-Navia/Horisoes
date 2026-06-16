@@ -1,3 +1,9 @@
+from auditoria_pdf.parsing.coosalud_parsers import (
+    CoosaludCrcDocumentParser,
+    CoosaludHevDocumentParser,
+    CoosaludPdeDocumentParser,
+    CoosaludPdxDocumentParser,
+)
 from auditoria_pdf.parsing.document_parsers import (
     AdditionalDocumentParser,
     BaseDocumentParser,
@@ -14,6 +20,7 @@ from auditoria_pdf.parsing.patient_document_extractors import (
     CrcPatientDocumentExtractor,
     PatternScoredPatientDocumentExtractor,
 )
+from auditoria_pdf.parsing.patient_name_extractors import GenericPatientNameExtractor
 from auditoria_pdf.parsing.resolver import (
     PrefixAwareDocumentParserResolver,
     build_default_parser_registry,
@@ -23,11 +30,16 @@ from auditoria_pdf.parsing.resolver import (
 __all__ = [
     "AdditionalDocumentParser",
     "BaseDocumentParser",
+    "CoosaludCrcDocumentParser",
+    "CoosaludHevDocumentParser",
+    "CoosaludPdeDocumentParser",
+    "CoosaludPdxDocumentParser",
     "CrcDocumentParser",
     "CrcPatientDocumentExtractor",
     "FevDocumentParser",
     "HaoDocumentParser",
     "HevDocumentParser",
+    "GenericPatientNameExtractor",
     "NuevaEpsPdeDocumentParser",
     "PatternScoredPatientDocumentExtractor",
     "PdeDocumentParser",

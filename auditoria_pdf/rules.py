@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import unicodedata
 
 from auditoria_pdf.domain import AuditContext, DocumentType, RuleResult
+from auditoria_pdf.parsing.common import normalize_patient_name
 
 
 def _normalize_text(value: str | None) -> str | None:
@@ -158,7 +159,7 @@ class CupsMatchRule(AuditRule):
 
         missing_in_pde = sorted(cups_factura - cups_autorizacion)
         extra_in_pde = sorted(cups_autorizacion - cups_factura)
-        passed = len(missing_in_pde) == 0
+        passed = len(missing_in_pde) == 0 and len(extra_in_pde) == 0
 
         details: list[str] = []
         if missing_in_pde:
@@ -207,7 +208,7 @@ class CupsMatchSkippedRule(AuditRule):
 class PatientDocumentConsistencyRule(AuditRule):
     rule_id = "R2_DOCUMENTO_FEV_VS_TODOS"
     description = (
-        "Verificar que el documento del paciente en FEV coincida contra todos los demas documentos del lote."
+        "Verificar que el documento o nombre del paciente en FEV coincida contra todos los demas documentos del lote."
     )
 
     def evaluate(self, context: AuditContext) -> RuleResult:
@@ -221,12 +222,15 @@ class PatientDocumentConsistencyRule(AuditRule):
             )
 
         reference_document = factura.patient_document
-        if not reference_document:
+        reference_name = normalize_patient_name(factura.patient_name)
+        if not reference_document and not reference_name:
             return RuleResult(
                 rule_id=self.rule_id,
                 description=self.description,
                 passed=False,
-                details=["No se pudo extraer documento del paciente en FEV (referencia)."],
+                details=[
+                    "No se pudo extraer documento ni nombre del paciente en FEV (referencia)."
+                ],
             )
 
         targets = [
@@ -239,42 +243,69 @@ class PatientDocumentConsistencyRule(AuditRule):
                 rule_id=self.rule_id,
                 description=self.description,
                 passed=True,
-                expected=reference_document,
-                actual=f"FEV:{reference_document}",
+                expected=self._format_identity(reference_document, reference_name),
+                actual=f"FEV:{self._format_identity(reference_document, reference_name)}",
                 details=["No hay documentos adicionales para comparar; regla omitida."],
             )
 
         details: list[str] = []
         mismatches: list[str] = []
-        actual_tokens = [f"FEV:{reference_document}"]
+        actual_tokens = [f"FEV:{self._format_identity(reference_document, reference_name)}"]
 
         for doc in targets:
             value = doc.patient_document
-            actual_tokens.append(f"{doc.prefix}:{value or 'N/D'}")
-            if not value:
+            name = normalize_patient_name(doc.patient_name)
+            actual_tokens.append(f"{doc.prefix}:{self._format_identity(value, name)}")
+
+            document_matches = (
+                bool(reference_document) and bool(value) and value == reference_document
+            )
+            name_matches = bool(reference_name) and bool(name) and name == reference_name
+
+            if document_matches or name_matches:
+                if name_matches and not document_matches:
+                    details.append(
+                        f"Coincidencia por nombre exacto en {doc.source_path.name}: {name}."
+                    )
+                continue
+
+            if not value and not name:
                 mismatches.append(f"{doc.prefix}=N/D")
                 details.append(
-                    f"No se pudo extraer documento del paciente en {doc.source_path.name}."
+                    f"No se pudo extraer documento ni nombre del paciente en {doc.source_path.name}."
                 )
                 continue
-            if value != reference_document:
-                mismatches.append(f"{doc.prefix}={value}")
-                details.append(
-                    f"Diferencia detectada: FEV={reference_document} vs {doc.prefix}={value} ({doc.source_path.name})."
-                )
+
+            mismatches.append(f"{doc.prefix}={self._format_identity(value, name)}")
+            details.append(
+                "Diferencia detectada: "
+                f"FEV={self._format_identity(reference_document, reference_name)} vs "
+                f"{doc.prefix}={self._format_identity(value, name)} "
+                f"({doc.source_path.name})."
+            )
 
         passed = len(mismatches) == 0
         if passed:
-            details.append("Documento del paciente consistente entre FEV y todos los demas PDFs.")
+            details.append(
+                "Identidad del paciente consistente entre FEV y todos los demas PDFs."
+            )
 
         return RuleResult(
             rule_id=self.rule_id,
             description=self.description,
             passed=passed,
-            expected=reference_document,
+            expected=self._format_identity(reference_document, reference_name),
             actual=" | ".join(actual_tokens),
             details=details,
         )
+
+    def _format_identity(self, document: str | None, name: str | None) -> str:
+        parts: list[str] = []
+        if document:
+            parts.append(f"doc={document}")
+        if name:
+            parts.append(f"nombre={name}")
+        return ", ".join(parts) if parts else "N/D"
 
 
 class RegimenConsistencyRule(AuditRule):

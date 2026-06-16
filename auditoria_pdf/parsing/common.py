@@ -83,6 +83,71 @@ def normalize_document_type(value: str | None) -> str | None:
     return compact
 
 
+def normalize_patient_name(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    repaired = (
+        value.replace("Ã‘", "Ñ")
+        .replace("Ã±", "ñ")
+        .replace("Â", "")
+        .replace("\u200b", " ")
+    )
+    normalized = unicodedata.normalize("NFD", repaired)
+    without_accents = "".join(
+        char for char in normalized if unicodedata.category(char) != "Mn"
+    )
+    letters_only = re.sub(r"[^A-Za-zÑñ]+", " ", without_accents)
+    compact = " ".join(letters_only.upper().split())
+    if not compact:
+        return None
+
+    stop_tokens = {
+        "AFILIADO",
+        "APELLIDO",
+        "APELLIDOS",
+        "AUTORIZACION",
+        "CODIGO",
+        "CONSULTA",
+        "DEPARTAMENTO",
+        "DIRECCION",
+        "DOCUMENTO",
+        "EDAD",
+        "ELECTRONICA",
+        "EPS",
+        "FACTURA",
+        "FECHA",
+        "IDENTIFICACION",
+        "INFORMACION",
+        "MUNICIPIO",
+        "NOMBRE",
+        "NOMBRES",
+        "NUMERO",
+        "PACIENTE",
+        "PAGINA",
+        "PRESTADOR",
+        "REGIMEN",
+        "SALIR",
+        "TELEFONO",
+        "TIPO",
+        "USUARIO",
+    }
+    tokens = compact.split()
+    for index, token in enumerate(tokens):
+        if token in stop_tokens:
+            tokens = tokens[:index]
+            break
+
+    name_tokens = [token for token in tokens if token not in stop_tokens]
+
+    if len(name_tokens) < 2:
+        return None
+    if len(name_tokens) > 8:
+        name_tokens = name_tokens[:8]
+
+    return " ".join(name_tokens)
+
+
 def normalize_regimen(value: str | None) -> str | None:
     if not value:
         return None

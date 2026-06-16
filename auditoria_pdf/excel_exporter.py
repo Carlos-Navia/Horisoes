@@ -10,21 +10,34 @@ from auditoria_pdf.domain import AuditReport, DocumentType, ParsedDocument, Rule
 
 
 class AuditExcelExporter:
-    HEADERS = [
+    _BASE_HEADERS = [
         "carpeta",
         "tipo_archivo",
         "documento_referencia",
         "documentos_detectados",
         "estado_documento",
+        "nombre_referencia",
+        "nombres_detectados",
+        "estado_nombre",
         "regimen_factura",
         "regimen_detectado",
         "estado_regimen",
         "error",
     ]
+    _NAME_HEADERS = {"nombre_referencia", "nombres_detectados", "estado_nombre"}
 
     RULE_CODE = "R1_CODIGO_FEV_VS_PDE"
     RULE_DOCUMENT = "R2_DOCUMENTO_FEV_VS_TODOS"
     RULE_REGIMEN = "R3_REGIMEN_FEV_VS_PDE"
+
+    def __init__(self, include_name_columns: bool = True) -> None:
+        self._include_name_columns = include_name_columns
+        if include_name_columns:
+            self.HEADERS = list(self._BASE_HEADERS)
+        else:
+            self.HEADERS = [
+                h for h in self._BASE_HEADERS if h not in self._NAME_HEADERS
+            ]
 
     def export(self, report: AuditReport, output_path: Path) -> Path:
         rows = self._build_rows(report)
@@ -72,6 +85,7 @@ class AuditExcelExporter:
         autorizacion = self._find_document(report, DocumentType.AUTORIZACION)
 
         document_reference = factura.patient_document if factura else None
+        name_reference = factura.patient_name if (factura and self._include_name_columns) else None
         regimen_factura = factura.regimen if factura else None
         regimen_detectado = autorizacion.regimen if autorizacion else None
 
@@ -85,27 +99,36 @@ class AuditExcelExporter:
         rows: list[dict[str, str]] = []
         for parsed in parsed_documents:
             estado_documento = self._build_document_status(parsed, document_reference)
+            estado_nombre = (
+                self._build_name_status(parsed, name_reference)
+                if self._include_name_columns
+                else "N/A"
+            )
             error_value = self._build_row_error(
                 parsed=parsed,
                 estado_documento=estado_documento,
+                estado_nombre=estado_nombre,
                 rule_code=rule_code,
                 rule_document=rule_document,
                 rule_regimen=rule_regimen,
                 global_errors=global_errors,
             )
-            rows.append(
-                {
-                    "carpeta": folder_label or parsed.source_path.parent.name,
-                    "tipo_archivo": parsed.prefix,
-                    "documento_referencia": document_reference or "N/D",
-                    "documentos_detectados": parsed.patient_document or "N/D",
-                    "estado_documento": estado_documento,
-                    "regimen_factura": regimen_factura or "N/D",
-                    "regimen_detectado": regimen_detectado or "N/D",
-                    "estado_regimen": estado_regimen,
-                    "error": error_value,
-                }
-            )
+            row: dict[str, str] = {
+                "carpeta": folder_label or parsed.source_path.parent.name,
+                "tipo_archivo": parsed.prefix,
+                "documento_referencia": document_reference or "N/D",
+                "documentos_detectados": parsed.patient_document or "N/D",
+                "estado_documento": estado_documento,
+                "regimen_factura": regimen_factura or "N/D",
+                "regimen_detectado": regimen_detectado or "N/D",
+                "estado_regimen": estado_regimen,
+                "error": error_value,
+            }
+            if self._include_name_columns:
+                row["nombre_referencia"] = name_reference or "N/D"
+                row["nombres_detectados"] = parsed.patient_name or "N/D"
+                row["estado_nombre"] = estado_nombre
+            rows.append(row)
         return rows
 
     def _find_document(
@@ -131,6 +154,15 @@ class AuditExcelExporter:
             return "NO_DETECTADO"
         return "COINCIDE" if parsed.patient_document == document_reference else "NO_COINCIDE"
 
+    def _build_name_status(
+        self, parsed: ParsedDocument, name_reference: str | None
+    ) -> str:
+        if parsed.prefix == "FEV":
+            return "REFERENCIA"
+        if not name_reference or not parsed.patient_name:
+            return "NO_DETECTADO"
+        return "COINCIDE" if parsed.patient_name == name_reference else "NO_COINCIDE"
+
     def _build_regimen_status(self, rule: RuleResult | None) -> str:
         if not rule:
             return "NO_EVAL"
@@ -145,6 +177,7 @@ class AuditExcelExporter:
         self,
         parsed: ParsedDocument,
         estado_documento: str,
+        estado_nombre: str,
         rule_code: RuleResult | None,
         rule_document: RuleResult | None,
         rule_regimen: RuleResult | None,
@@ -154,10 +187,25 @@ class AuditExcelExporter:
         if global_errors:
             errors.append(global_errors)
 
-        if estado_documento == "NO_DETECTADO":
-            errors.append("Documento no detectado en este PDF.")
-        elif estado_documento == "NO_COINCIDE":
-            errors.append("Documento diferente al de referencia FEV.")
+        if self._include_name_columns:
+            identity_matches = (
+                estado_documento in {"REFERENCIA", "COINCIDE"}
+                or estado_nombre in {"REFERENCIA", "COINCIDE"}
+            )
+        else:
+            identity_matches = estado_documento in {"REFERENCIA", "COINCIDE"}
+
+        if not identity_matches:
+            if estado_documento == "NO_DETECTADO":
+                errors.append("Documento no detectado en este PDF.")
+            elif estado_documento == "NO_COINCIDE":
+                errors.append("Documento diferente al de referencia FEV.")
+
+            if self._include_name_columns:
+                if estado_nombre == "NO_DETECTADO":
+                    errors.append("Nombre no detectado en este PDF.")
+                elif estado_nombre == "NO_COINCIDE":
+                    errors.append("Nombre diferente al de referencia FEV.")
 
         if parsed.prefix in {"FEV", "PDE"} and rule_code and not rule_code.passed:
             errors.extend(rule_code.details[:1])
@@ -205,7 +253,7 @@ class AuditExcelExporter:
     def _empty_row_with_error(
         self, error: str, folder_label: str | None = None
     ) -> dict[str, str]:
-        return {
+        row: dict[str, str] = {
             "carpeta": folder_label or "",
             "tipo_archivo": "",
             "documento_referencia": "N/D",
@@ -216,3 +264,8 @@ class AuditExcelExporter:
             "estado_regimen": "NO_EVAL",
             "error": error,
         }
+        if self._include_name_columns:
+            row["nombre_referencia"] = "N/D"
+            row["nombres_detectados"] = "N/D"
+            row["estado_nombre"] = "NO_DETECTADO"
+        return row

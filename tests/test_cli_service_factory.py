@@ -50,6 +50,13 @@ class AuditServiceFactoryTest(unittest.TestCase):
         self.assertIsInstance(nueva_eps_service.rules[1], CupsMatchRule)
         self.assertIsInstance(sanitas_service.rules[1], CupsMatchRule)
 
+    def test_services_read_full_documents_by_default(self) -> None:
+        service = self.factory.create_for_nueva_eps(
+            self._build_args(eps=EpsProfileKey.NUEVA_EPS.value)
+        )
+
+        self.assertTrue(all(limit is None for limit in service.page_limits.values()))
+
     def test_create_for_nueva_eps_uses_nueva_eps_pde_parser(self) -> None:
         service = self.factory.create_for_nueva_eps(
             self._build_args(eps=EpsProfileKey.NUEVA_EPS.value)

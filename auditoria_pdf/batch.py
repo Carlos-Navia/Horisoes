@@ -72,6 +72,22 @@ class CaseAuditResult:
 
 
 class PdfCaseScanner:
+    EXCLUDED_DIR_NAMES = frozenset(
+        {
+            ".git",
+            ".tmp_tests",
+            ".venv",
+            ".venv_auditoria_ips",
+            "__pycache__",
+            "BACKUP_PDF_UNIDOS",
+            "build",
+            "build_script_original",
+            "dist",
+            "dist_script_original",
+            "salidas",
+            "spec_script_original",
+        }
+    )
     _NAME_PATTERN = re.compile(
         r"^(?P<prefix>[A-Za-z0-9]+)_.+_(?P<case_id>[A-Za-z0-9\-]+)$",
         re.IGNORECASE,
@@ -81,11 +97,27 @@ class PdfCaseScanner:
         self._annotation_cache: dict[Path, bool] = {}
 
     def find_case_folders(self, root_dir: Path) -> dict[Path, list[Path]]:
-        pdf_paths = sorted(root_dir.rglob("*.pdf"))
+        pdf_paths = sorted(self._iter_pdf_paths(root_dir))
         grouped_by_case_id = self._group_by_case_id(root_dir, pdf_paths)
         if grouped_by_case_id:
             return grouped_by_case_id
         return self._group_by_parent_folder(pdf_paths)
+
+    def _iter_pdf_paths(self, root_dir: Path) -> list[Path]:
+        pdf_paths: list[Path] = []
+        for pdf_path in root_dir.rglob("*.pdf"):
+            if self._is_excluded_path(root_dir, pdf_path):
+                continue
+            pdf_paths.append(pdf_path)
+        return pdf_paths
+
+    def _is_excluded_path(self, root_dir: Path, pdf_path: Path) -> bool:
+        try:
+            relative_parts = pdf_path.relative_to(root_dir).parts[:-1]
+        except ValueError:
+            relative_parts = pdf_path.parts[:-1]
+        excluded = {part.upper() for part in self.EXCLUDED_DIR_NAMES}
+        return any(part.upper() in excluded for part in relative_parts)
 
     def _group_by_parent_folder(self, pdf_paths: list[Path]) -> dict[Path, list[Path]]:
         grouped: dict[Path, list[Path]] = {}

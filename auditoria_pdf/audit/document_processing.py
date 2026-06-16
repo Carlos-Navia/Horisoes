@@ -10,7 +10,7 @@ from auditoria_pdf.parsing.document_parsers import BaseDocumentParser
 
 @dataclass(slots=True)
 class PageLimitResolver:
-    page_limits: dict[DocumentType, int]
+    page_limits: dict[DocumentType, int | None]
 
     def resolve(self, document_type: DocumentType) -> int | None:
         return self.page_limits.get(document_type)
@@ -33,7 +33,7 @@ class DocumentRetryPolicy:
             DocumentType.VALIDADOR,
             DocumentType.ADICIONAL,
         }:
-            return not parsed.patient_document
+            return not parsed.patient_document and not parsed.patient_name
         return False
 
 
@@ -99,6 +99,10 @@ class SinglePdfProcessingEngine:
 
         if not parsed.patient_document_type and candidate.patient_document_type:
             parsed.patient_document_type = candidate.patient_document_type
+            improved = True
+
+        if not parsed.patient_name and candidate.patient_name:
+            parsed.patient_name = candidate.patient_name
             improved = True
 
         if not parsed.regimen and candidate.regimen:

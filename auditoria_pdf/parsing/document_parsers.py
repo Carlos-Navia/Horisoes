@@ -4,7 +4,11 @@ from abc import ABC
 from pathlib import Path
 
 from auditoria_pdf.domain import DocumentType, ParsedDocument
-from auditoria_pdf.parsing.common import normalize_document_number, normalize_regimen
+from auditoria_pdf.parsing.common import (
+    normalize_document_number,
+    normalize_patient_name,
+    normalize_regimen,
+)
 from auditoria_pdf.parsing.cups_extractors import (
     AdditionalCupsExtractor,
     CrcCupsExtractor,
@@ -46,6 +50,15 @@ from auditoria_pdf.parsing.patient_document_type_extractors import (
     PdePatientDocumentTypeExtractor,
     PdxPatientDocumentTypeExtractor,
 )
+from auditoria_pdf.parsing.patient_name_extractors import (
+    AdditionalPatientNameExtractor,
+    CrcPatientNameExtractor,
+    FevPatientNameExtractor,
+    HaoPatientNameExtractor,
+    HevPatientNameExtractor,
+    PdePatientNameExtractor,
+    PdxPatientNameExtractor,
+)
 from auditoria_pdf.parsing.pipelines import DocumentFieldExtractionPipeline
 from auditoria_pdf.parsing.regimen_extractors import (
     AdditionalRegimenExtractor,
@@ -75,6 +88,7 @@ class BaseDocumentParser(ABC):
             raw_text=normalized_text,
             prefix=prefix.upper(),
             patient_document=normalize_document_number(fields.get("patient_document")),
+            patient_name=normalize_patient_name(fields.get("patient_name")),
             patient_document_type=fields.get("patient_document_type"),
             cups_codes=fields.get("cups_codes", set()),
             regimen=normalize_regimen(fields.get("regimen")),
@@ -118,6 +132,7 @@ class HighlightOnlyDocumentParser(BaseDocumentParser):
             raw_text=normalized_text,
             prefix=prefix.upper(),
             patient_document=normalize_document_number(fields.get("patient_document")),
+            patient_name=normalize_patient_name(fields.get("patient_name")),
             patient_document_type=fields.get("patient_document_type"),
             cups_codes=fields.get("cups_codes", set()),
             regimen=normalize_regimen(fields.get("regimen")),
@@ -141,6 +156,7 @@ class FevDocumentParser(BaseDocumentParser):
                     fev_field_extractor=fev_field_extractor
                 ),
                 patient_document_type_extractor=FevPatientDocumentTypeExtractor(),
+                patient_name_extractor=FevPatientNameExtractor(),
                 regimen_extractor=FevRegimenExtractor(fev_field_extractor=fev_field_extractor),
                 cups_extractor=FevCupsExtractor(),
                 metadata_extractor=FevMetadataExtractor(),
@@ -156,6 +172,7 @@ class PdeDocumentParser(BaseDocumentParser):
             DocumentFieldExtractionPipeline(
                 patient_document_extractor=PdePatientDocumentExtractor(),
                 patient_document_type_extractor=PdePatientDocumentTypeExtractor(),
+                patient_name_extractor=PdePatientNameExtractor(),
                 regimen_extractor=PdeRegimenExtractor(),
                 cups_extractor=PdeCupsExtractor(),
                 metadata_extractor=PdeMetadataExtractor(),
@@ -171,6 +188,7 @@ class NuevaEpsPdeDocumentParser(BaseDocumentParser):
             DocumentFieldExtractionPipeline(
                 patient_document_extractor=PdePatientDocumentExtractor(),
                 patient_document_type_extractor=PdePatientDocumentTypeExtractor(),
+                patient_name_extractor=PdePatientNameExtractor(),
                 regimen_extractor=NuevaEpsPdeRegimenExtractor(),
                 cups_extractor=PdeCupsExtractor(),
                 metadata_extractor=PdeMetadataExtractor(),
@@ -186,6 +204,7 @@ class SanitasPdeDocumentParser(BaseDocumentParser):
             DocumentFieldExtractionPipeline(
                 patient_document_extractor=SanitasPdePatientDocumentExtractor(),
                 patient_document_type_extractor=PdePatientDocumentTypeExtractor(),
+                patient_name_extractor=PdePatientNameExtractor(),
                 regimen_extractor=SanitasPdeRegimenExtractor(),
                 cups_extractor=PdeCupsExtractor(),
                 metadata_extractor=PdeMetadataExtractor(),
@@ -201,6 +220,7 @@ class CrcDocumentParser(BaseDocumentParser):
             DocumentFieldExtractionPipeline(
                 patient_document_extractor=CrcPatientDocumentExtractor(),
                 patient_document_type_extractor=CrcPatientDocumentTypeExtractor(),
+                patient_name_extractor=CrcPatientNameExtractor(),
                 regimen_extractor=CrcRegimenExtractor(),
                 cups_extractor=CrcCupsExtractor(),
                 metadata_extractor=CrcMetadataExtractor(),
@@ -216,6 +236,7 @@ class HevDocumentParser(BaseDocumentParser):
             DocumentFieldExtractionPipeline(
                 patient_document_extractor=HevPatientDocumentExtractor(),
                 patient_document_type_extractor=HevPatientDocumentTypeExtractor(),
+                patient_name_extractor=HevPatientNameExtractor(),
                 regimen_extractor=HevRegimenExtractor(),
                 cups_extractor=HevCupsExtractor(),
                 metadata_extractor=HevMetadataExtractor(),
@@ -233,6 +254,7 @@ class PdxDocumentParser(BaseDocumentParser):
                     table_extractor=PdxHighlightedPatientDocumentExtractor()
                 ),
                 patient_document_type_extractor=PdxPatientDocumentTypeExtractor(),
+                patient_name_extractor=PdxPatientNameExtractor(),
                 regimen_extractor=PdxRegimenExtractor(),
                 cups_extractor=PdxCupsExtractor(),
                 metadata_extractor=PdxMetadataExtractor(),
@@ -248,6 +270,7 @@ class HaoDocumentParser(BaseDocumentParser):
             DocumentFieldExtractionPipeline(
                 patient_document_extractor=HaoPatientDocumentExtractor(),
                 patient_document_type_extractor=HaoPatientDocumentTypeExtractor(),
+                patient_name_extractor=HaoPatientNameExtractor(),
                 regimen_extractor=HaoRegimenExtractor(),
                 cups_extractor=HaoCupsExtractor(),
                 metadata_extractor=HaoMetadataExtractor(),
@@ -263,6 +286,7 @@ class AdditionalDocumentParser(BaseDocumentParser):
             DocumentFieldExtractionPipeline(
                 patient_document_extractor=AdditionalPatientDocumentExtractor(),
                 patient_document_type_extractor=AdditionalPatientDocumentTypeExtractor(),
+                patient_name_extractor=AdditionalPatientNameExtractor(),
                 regimen_extractor=AdditionalRegimenExtractor(),
                 cups_extractor=AdditionalCupsExtractor(),
                 metadata_extractor=AdditionalMetadataExtractor(),

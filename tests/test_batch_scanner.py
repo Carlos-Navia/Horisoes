@@ -61,6 +61,25 @@ class PdfCaseScannerTest(unittest.TestCase):
         self.assertIn(self.root / "caso_a", folder_map)
         self.assertIn(self.root / "caso_b", folder_map)
 
+    def test_ignores_backup_pdf_unidos_folder(self) -> None:
+        self._create_pdf(
+            self.root / "FVEP1001" / "FEV_901011395_FVEP1001.pdf",
+            with_highlight=False,
+        )
+        self._create_pdf(
+            self.root / "FVEP1001" / "PDE_901011395_FVEP1001.pdf",
+            with_highlight=False,
+        )
+        self._create_pdf(
+            self.root / "BACKUP_PDF_UNIDOS" / "FVEP1001" / "VAL.pdf",
+            with_highlight=False,
+        )
+
+        folder_map = self.scanner.find_case_folders(self.root)
+
+        self.assertIn(self.root / "FVEP1001", folder_map)
+        self.assertNotIn(self.root / "BACKUP_PDF_UNIDOS" / "FVEP1001", folder_map)
+
     def _create_pdf(self, path: Path, with_highlight: bool) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         document = fitz.open()

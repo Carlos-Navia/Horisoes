@@ -73,6 +73,7 @@ class EpsProfilesTest(unittest.TestCase):
         overrides = NuevaEpsAuditProfile().parser_overrides()
         self.assertIn(DocumentType.AUTORIZACION, overrides)
         self.assertIsInstance(overrides[DocumentType.AUTORIZACION], NuevaEpsPdeDocumentParser)
+        self.assertNotIn(DocumentType.FACTURA, overrides)
         self.assertEqual(CoosaludAuditProfile().parser_overrides(), {})
 
         sanitas_overrides = SanitasAuditProfile().parser_overrides()

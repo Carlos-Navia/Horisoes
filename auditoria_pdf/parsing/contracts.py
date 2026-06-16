@@ -16,6 +16,12 @@ class PatientDocumentTypeExtractorContract(ABC):
         raise NotImplementedError
 
 
+class PatientNameExtractorContract(ABC):
+    @abstractmethod
+    def extract(self, text: str) -> str | None:
+        raise NotImplementedError
+
+
 class RegimenExtractorContract(ABC):
     @abstractmethod
     def extract(self, text: str) -> str | None:

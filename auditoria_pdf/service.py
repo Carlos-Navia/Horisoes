@@ -58,7 +58,7 @@ class PdfAuditService:
         self.min_pdfs = min_pdfs
         self.max_pdfs = max_pdfs
 
-        self.page_limits = dict(self.profile.page_limits())
+        self.page_limits: dict[DocumentType, int | None] = dict(self.profile.page_limits())
         self.render_fallback_types = set(self.profile.render_fallback_types())
 
         self.path_collector = path_collector or UniquePdfPathCollector()

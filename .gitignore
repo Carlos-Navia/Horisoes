@@ -1,5 +1,16 @@
 .venv/
+.venv_*/
 __pycache__/
 *.pyc
 salidas/
-
+build/
+build_*/
+dist/
+dist_*/
+spec_*/
+*.spec
+*.exe
+*.xlsx
+.tmp_tests/
+tmp_*/
+tmp*/

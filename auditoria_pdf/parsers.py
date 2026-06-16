@@ -19,6 +19,7 @@ from auditoria_pdf.parsing.patient_document_extractors import (
 from auditoria_pdf.parsing.patient_document_type_extractors import (
     GenericPatientDocumentTypeExtractor,
 )
+from auditoria_pdf.parsing.patient_name_extractors import GenericPatientNameExtractor
 from auditoria_pdf.parsing.resolver import (
     PrefixAwareDocumentParserResolver,
     build_default_parser_registry,
@@ -30,6 +31,7 @@ _CRC_DOCUMENT_EXTRACTOR = CrcPatientDocumentExtractor(
     generic_extractor=_GENERIC_DOCUMENT_EXTRACTOR
 )
 _GENERIC_DOCUMENT_TYPE_EXTRACTOR = GenericPatientDocumentTypeExtractor()
+_GENERIC_PATIENT_NAME_EXTRACTOR = GenericPatientNameExtractor()
 _CUPS_EXTRACTOR = ContextAwareCupsExtractor()
 
 
@@ -61,6 +63,10 @@ def _extract_patient_document_type_generic(text: str) -> str | None:
     return _GENERIC_DOCUMENT_TYPE_EXTRACTOR.extract(text)
 
 
+def _extract_patient_name_generic(text: str) -> str | None:
+    return _GENERIC_PATIENT_NAME_EXTRACTOR.extract(text)
+
+
 def _extract_cups_codes(text: str) -> set[str]:
     return _CUPS_EXTRACTOR.extract(text)
 
@@ -89,4 +95,5 @@ __all__ = [
     "_extract_patient_document_crc",
     "_extract_patient_document_generic",
     "_extract_patient_document_type_generic",
+    "_extract_patient_name_generic",
 ]

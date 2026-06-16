@@ -18,6 +18,7 @@ El sistema procesa lotes de PDFs por caso, extrae informacion clave (documento d
 3. Documento del paciente:
    - Toma como referencia el documento extraido de `FEV`.
    - Lo compara contra todos los demas PDFs del lote.
+   - Si algun PDF no permite extraer documento, usa el nombre del paciente como segunda coincidencia exacta normalizada.
 4. Regimen del paciente:
    - Compara `SUBSIDIADO` o `CONTRIBUTIVO` entre `FEV` y `PDE`.
 
@@ -28,7 +29,7 @@ Un caso queda:
 ## 3) Arquitectura (resumen tecnico)
 
 - `main.py`: punto de entrada CLI (modo unico y modo masivo).
-- `auditoria_pdf/extractor.py`: extraccion de texto PDF (texto nativo + OCR Tesseract + fallback por render).
+- `auditoria_pdf/extractor.py`: extraccion de texto PDF completo (texto nativo + OCR Tesseract + fallback por render).
 - `auditoria_pdf/parsers.py`: parseo de campos por tipo de documento.
 - `auditoria_pdf/rules.py`: reglas de negocio desacopladas.
 - `auditoria_pdf/service.py`: orquestador del flujo de auditoria.

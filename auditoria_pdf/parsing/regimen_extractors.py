@@ -64,6 +64,11 @@ class PdeRegimenExtractor(LiteralAnchorRegimenExtractor):
         if normalized_anchor:
             return normalized_anchor
 
+        # ADRES BDUA table format where columns might stick together
+        adres_regimen = extract_first_match([r"(SUBSIDIADO|CONTRIBUTIVO)\s*\d{2}/\d{2}/\d{4}"], text)
+        if adres_regimen:
+            return normalize_regimen(adres_regimen)
+
         lines = [line.strip() for line in text.splitlines() if line.strip()]
 
         # NUEVA EPS format seen in PDE_*_FVEA*.pdf:

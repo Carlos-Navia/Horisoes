@@ -9,7 +9,9 @@ Validar automaticamente:
    - `COOSALUD`: esta comparacion se omite por regla de negocio.
    - `NUEVA_EPS`: esta comparacion es obligatoria.
    - `SANITAS`: esta comparacion es obligatoria.
-2. Documento del paciente en `FEV` como referencia y comparacion contra todos los demas PDFs del lote.
+2. Identidad del paciente en `FEV` como referencia y comparacion contra todos los demas PDFs del lote.
+   - La identidad pasa si coincide exactamente el documento del paciente.
+   - Si el documento no esta disponible en algun PDF, tambien puede pasar por nombre completo exacto normalizado.
 3. Regimen del paciente entre `FEV` y `PDE`.
    - `NUEVA_EPS`: en `PDE`, si `Semanas Cotizadas` esta vacio -> `SUBSIDIADO`; si tiene valor -> `CONTRIBUTIVO`.
 4. Estructura del lote:
@@ -18,7 +20,7 @@ Validar automaticamente:
    - Opcionales: `PDE`, `CRC`, `HEV`, `HAO`, `PDX` u otro prefijo.
 
 ## Arquitectura
-- `auditoria_pdf/extractor.py`: extraccion hibrida PDF (texto nativo + OCR con Tesseract).
+- `auditoria_pdf/extractor.py`: extraccion hibrida PDF (texto nativo + OCR con Tesseract) leyendo el documento completo por defecto.
 - `auditoria_pdf/parsers.py`: parsers OOP por tipo de documento.
 - `auditoria_pdf/rules.py`: reglas de negocio desacopladas.
 - `auditoria_pdf/service.py`: orquestacion del flujo completo.
@@ -103,6 +105,9 @@ Encabezados del Excel:
 - `documento_referencia`
 - `documentos_detectados`
 - `estado_documento`
+- `nombre_referencia`
+- `nombres_detectados`
+- `estado_nombre`
 - `regimen_factura`
 - `regimen_detectado`
 - `estado_regimen`
